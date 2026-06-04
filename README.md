@@ -128,9 +128,7 @@ webiq-playground/
 │           ├── tools.py        # FunctionTool + run_<feature>_search executors
 │           ├── registry.py     # AgentSpec per feature (the one place to add agents)
 │           ├── engine.py       # generic create_agent() + ask() tool loop
-│           ├── cli.py          # `webiq-agent create|ask <feature>`
-│           ├── create_agent.py # back-compat shim
-│           └── run_agent.py    # back-compat shim
+│           └── cli.py          # `webiq-agent create|ask <feature>`
 ├── tests/
 │   ├── test_smoke.py       # offline tests (no network)
 │   └── test_agent_tool.py  # tool serialization + registry

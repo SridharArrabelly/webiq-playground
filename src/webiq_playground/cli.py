@@ -12,7 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from .client import get_client
+from .client import DEFAULT_REGION, get_client
 from .web import search_web
 from .news import search_news
 from .videos import search_videos
@@ -32,9 +32,9 @@ def _results(response, key):
 
 
 def _line(r):
-    title = getattr(r, "title", None)
-    url = getattr(r, "url", None)
-    text = getattr(r, "content", None) or getattr(r, "snippet", None) or ""
+    title = getattr(r, "title", None) or getattr(r, "name", None)
+    url = getattr(r, "url", None) or getattr(r, "contentUrl", None) or getattr(r, "hostPageUrl", None)
+    text = getattr(r, "content", None) or getattr(r, "snippet", None) or getattr(r, "description", None) or ""
     return title, url, str(text)
 
 
@@ -52,7 +52,7 @@ def main(argv=None) -> int:
     parser.add_argument("query")
     parser.add_argument("--site", default=None, help="Restrict to a domain, e.g. sars.gov.za")
     parser.add_argument("--max", type=int, default=5, dest="max_results")
-    parser.add_argument("--region", default="ZA")
+    parser.add_argument("--region", default=DEFAULT_REGION)
     parser.add_argument("--language", default="en")
     parser.add_argument("--save", default="webiq_response.json")
     args = parser.parse_args(argv)
