@@ -1,0 +1,13 @@
+[project]
+name = "webiq-playground"
+version = "0.1.0"
+description = "A playground for the Microsoft Web IQ APIs (web, news, videos, images search)."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "python-dotenv>=1.2.2",
+    "requests>=2.34.2",
+]
+
+[project.optional-dependencies]
+entra = ["msal>=1.37.0"]
