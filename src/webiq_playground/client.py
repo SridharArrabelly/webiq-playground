@@ -1,4 +1,4 @@
-"""Shared HTTP client and auth for the Microsoft Web IQ APIs.
+﻿"""Shared HTTP client and auth for the Microsoft Web IQ APIs.
 
 Auth precedence:
   1. WEBIQ_API_KEY  -> sent as the `x-apikey` header (quick start, default).
@@ -56,7 +56,8 @@ class WebIQClient:
             import msal  # optional dependency
         except ImportError as exc:  # pragma: no cover
             raise WebIQError(
-                "Entra ID env vars set but 'msal' is not installed. Run: uv add msal"
+                "Entra ID env vars set but 'msal' is not installed. "
+                "Run: uv sync --extra entra"
             ) from exc
 
         app = msal.ConfidentialClientApplication(

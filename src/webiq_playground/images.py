@@ -1,13 +1,13 @@
-"""News Search v3 (Beta) - POST /v3/search/news."""
+﻿"""Images Search v3 (Beta) - POST /v3/search/images."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from client import WebIQClient, build_query
+from .client import WebIQClient, build_query
 
 
-def search_news(
+def search_images(
     client: WebIQClient,
     query: str,
     *,
@@ -22,4 +22,4 @@ def search_news(
         "language": language,
         "region": region,
     }
-    return client.post("search/news", payload)
+    return client.post("search/images", payload)

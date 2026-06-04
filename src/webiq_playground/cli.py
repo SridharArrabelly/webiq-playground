@@ -1,10 +1,10 @@
-"""WebIQ Playground CLI.
+﻿"""WebIQ Playground CLI.
 
-Usage:
-  uv run python cli.py web "tax filing deadline" --site sars.gov.za
-  uv run python cli.py news "budget speech" --site sars.gov.za --max 10
-  uv run python cli.py videos "how to register for efiling"
-  uv run python cli.py images "sars logo"
+Usage (after `uv sync`):
+  uv run webiq web "tax filing deadline" --site sars.gov.za
+  uv run webiq news "budget speech" --site sars.gov.za --max 10
+  uv run webiq videos "how to register for efiling"
+  uv run webiq images "sars logo"
 """
 
 from __future__ import annotations
@@ -13,11 +13,11 @@ import argparse
 import json
 import sys
 
-from client import WebIQClient, WebIQError
-from web import search_web
-from news import search_news
-from videos import search_videos
-from images import search_images
+from .client import WebIQClient, WebIQError
+from .web import search_web
+from .news import search_news
+from .videos import search_videos
+from .images import search_images
 
 FEATURES = {
     "web": search_web,

@@ -1,10 +1,10 @@
-"""Web Search v3 - POST /v3/search/web."""
+﻿"""Web Search v3 - POST /v3/search/web."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from client import WebIQClient, build_query
+from .client import WebIQClient, build_query
 
 
 def search_web(

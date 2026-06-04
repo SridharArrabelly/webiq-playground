@@ -1,11 +1,10 @@
-"""Minimal example: a web search scoped to sars.gov.za.
+﻿"""Minimal example: a web search scoped to sars.gov.za.
 
 Run:
   uv run python test_webiq.py
 """
 
-from client import WebIQClient
-from web import search_web
+from webiq_playground import WebIQClient, search_web
 
 
 def main() -> None:

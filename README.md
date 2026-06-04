@@ -38,26 +38,25 @@ WEBIQ_API_KEY=<your-api-key>
 
 ## Usage
 
-Run any feature via the CLI:
+Run any feature via the `webiq` command (installed by `uv sync`):
 
 ```bash
 # Web search scoped to a single domain
-uv run python cli.py web "tax filing deadline" --site sars.gov.za
+uv run webiq web "tax filing deadline" --site sars.gov.za
 
 # News, videos, images
-uv run python cli.py news "budget speech" --site sars.gov.za --max 10
-uv run python cli.py videos "how to register for efiling"
-uv run python cli.py images "sars logo"
+uv run webiq news "budget speech" --site sars.gov.za --max 10
+uv run webiq videos "how to register for efiling"
+uv run webiq images "sars logo"
 ```
 
 Common flags: `--site <domain>`, `--max <n>` (1-50), `--region ZA`, `--language en`,
 `--save out.json`. The full JSON response is written to `webiq_response.json` by default.
 
-Or use the modules directly in Python:
+Or use the package directly in Python:
 
 ```python
-from client import WebIQClient
-from web import search_web
+from webiq_playground import WebIQClient, search_web
 
 client = WebIQClient()                       # reads WEBIQ_API_KEY from .env
 data = search_web(client, "tax filing deadline", site="sars.gov.za")
@@ -88,13 +87,18 @@ The `--site` flag (and the `site=` argument) append `site:<domain>` for you.
 
 ```
 webiq-playground/
-├── client.py   # WebIQClient: shared POST + auth (api key / Entra ID)
-├── web.py      # web search
-├── news.py     # news search (beta)
-├── videos.py   # videos search
-├── images.py   # images search (beta)
-├── cli.py      # command-line dispatcher
-├── test_webiq.py  # minimal example
+├── src/
+│   └── webiq_playground/
+│       ├── __init__.py   # re-exports the public API
+│       ├── client.py     # WebIQClient: shared POST + auth (api key / Entra ID)
+│       ├── web.py        # web search
+│       ├── news.py       # news search (beta)
+│       ├── videos.py     # videos search
+│       ├── images.py     # images search (beta)
+│       └── cli.py        # `webiq` command dispatcher
+├── tests/
+│   └── test_smoke.py     # offline tests (no network)
+├── test_webiq.py         # minimal end-to-end example
 ├── .env.example
 └── pyproject.toml
 ```
