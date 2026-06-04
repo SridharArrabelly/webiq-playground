@@ -1,93 +1,41 @@
-﻿"""Shared HTTP client and auth for the Microsoft Web IQ APIs.
+﻿"""Thin convenience layer over the official `webiq` SDK.
 
-Auth precedence:
-  1. WEBIQ_API_KEY  -> sent as the `x-apikey` header (quick start, default).
-  2. Entra ID       -> AZURE_TENANT_ID + AZURE_CLIENT_ID + AZURE_CLIENT_SECRET,
-                       exchanged for a bearer token via MSAL (optional dependency).
+Provides:
+  * get_client()   - build a webiq client from the environment (.env)
+  * build_query()  - add a `site:` operator to scope a query to one domain
+  * DEFAULT_REGION - default region used by the feature wrappers
 """
 
 from __future__ import annotations
 
 import os
-from typing import Any
 
-import requests
 from dotenv import load_dotenv
+from webiq import WebIQClient
 
 load_dotenv()
 
-BASE_URL = "https://api.microsoft.ai/v3"
+DEFAULT_REGION = "ZA"
 
 
-class WebIQError(RuntimeError):
-    """Raised when the Web IQ API returns a non-2xx response."""
+def get_client() -> WebIQClient:
+    """Create a WebIQ client from the environment.
 
+    Uses WEBIQ_API_KEY when present; otherwise falls back to Entra ID via
+    DefaultAzureCredential (install the `entra` extra: uv sync --extra entra).
+    """
+    api_key = os.environ.get("WEBIQ_API_KEY")
+    if api_key:
+        return WebIQClient(api_key=api_key)
 
-class WebIQClient:
-    def __init__(
-        self,
-        api_key: str | None = None,
-        *,
-        base_url: str = BASE_URL,
-        timeout: int = 60,
-    ) -> None:
-        self.api_key = api_key or os.environ.get("WEBIQ_API_KEY")
-        self.base_url = base_url.rstrip("/")
-        self.timeout = timeout
-        self._token: str | None = None
-
-        if not self.api_key:
-            self._token = self._try_entra_token()
-
-        if not self.api_key and not self._token:
-            raise WebIQError(
-                "No credentials found. Set WEBIQ_API_KEY in your .env, or configure "
-                "AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET."
-            )
-
-    @staticmethod
-    def _try_entra_token() -> str | None:
-        tenant = os.environ.get("AZURE_TENANT_ID")
-        client_id = os.environ.get("AZURE_CLIENT_ID")
-        secret = os.environ.get("AZURE_CLIENT_SECRET")
-        if not (tenant and client_id and secret):
-            return None
-        try:
-            import msal  # optional dependency
-        except ImportError as exc:  # pragma: no cover
-            raise WebIQError(
-                "Entra ID env vars set but 'msal' is not installed. "
-                "Run: uv sync --extra entra"
-            ) from exc
-
-        app = msal.ConfidentialClientApplication(
-            client_id=client_id,
-            authority=f"https://login.microsoftonline.com/{tenant}",
-            client_credential=secret,
-        )
-        result = app.acquire_token_for_client(
-            scopes=["https://api.microsoft.ai/.default"]
-        )
-        if "access_token" not in result:
-            raise WebIQError(f"Entra ID token acquisition failed: {result}")
-        return result["access_token"]
-
-    def _headers(self) -> dict[str, str]:
-        headers = {"content-type": "application/json"}
-        if self.api_key:
-            headers["x-apikey"] = self.api_key
-        else:
-            headers["Authorization"] = f"Bearer {self._token}"
-        return headers
-
-    def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
-        url = f"{self.base_url}/{path.lstrip('/')}"
-        resp = requests.post(
-            url, headers=self._headers(), json=payload, timeout=self.timeout
-        )
-        if resp.status_code != 200:
-            raise WebIQError(f"HTTP {resp.status_code} from {url}: {resp.text}")
-        return resp.json()
+    try:
+        from azure.identity import DefaultAzureCredential
+    except ImportError as exc:
+        raise RuntimeError(
+            "No WEBIQ_API_KEY set and azure-identity is not installed. Set "
+            "WEBIQ_API_KEY in .env, or install the Entra extra: uv sync --extra entra"
+        ) from exc
+    return WebIQClient(credential=DefaultAzureCredential())
 
 
 def build_query(query: str, site: str | None = None) -> str:
