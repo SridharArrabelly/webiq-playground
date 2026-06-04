@@ -130,8 +130,9 @@ webiq-playground/
 │           ├── engine.py       # generic create_agent() + ask() tool loop
 │           └── cli.py          # `webiq-agent create|ask <feature>`
 ├── tests/
-│   ├── test_smoke.py       # offline tests (no network)
-│   └── test_agent_tool.py  # tool serialization + registry
+│   ├── test_client.py      # build_query + get_client auth selection
+│   ├── test_search.py      # web/news/videos/images wrappers (parametrized)
+│   └── test_agent.py       # tools, registry, engine tool loop
 ├── .env.example
 └── pyproject.toml
 ```
