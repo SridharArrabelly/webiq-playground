@@ -12,11 +12,23 @@ pytest.importorskip("openai")
 
 from webiq_playground.agent import tools
 from webiq_playground.agent.registry import AGENTS, AgentSpec, get_spec
+from webiq_playground.core.models import SearchItem, SearchResult
 
 
-class _DummyCtx:
+class _FakeBackend:
+    """Stand-in backend returning a fixed SearchResult."""
+
+    name = "fake"
+
+    def __init__(self, result):
+        self._result = result
+
+    def search(self, feature, query, **kwargs):
+        self.feature = feature
+        return self._result
+
     def __enter__(self):
-        return object()
+        return self
 
     def __exit__(self, *args):
         return False
@@ -28,11 +40,13 @@ def test_tool_is_defined():
 
 
 def test_run_web_search_serializes(monkeypatch):
-    web_result = type("W", (), {"title": "T", "url": "U", "content": "C"})()
-    response = type("R", (), {"webResults": [web_result], "traceId": "trace-1"})()
-
-    monkeypatch.setattr(tools, "get_client", lambda: _DummyCtx())
-    monkeypatch.setattr(tools, "search_web", lambda *a, **k: response)
+    result = SearchResult(
+        feature="web",
+        backend="fake",
+        items=[SearchItem(title="T", url="U", content="C")],
+        trace_id="trace-1",
+    )
+    monkeypatch.setattr(tools, "get_backend", lambda: _FakeBackend(result))
 
     out = json.loads(tools.run_web_search("q", ""))
     assert out["results"][0]["title"] == "T"

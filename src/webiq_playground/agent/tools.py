@@ -1,34 +1,20 @@
-﻿"""Function tools + executors exposed to the WebIQ Foundry agents.
+"""Function tools + executors exposed to the WebIQ Foundry agents.
 
 One `FunctionTool` schema and one `run_<feature>_search` executor per WebIQ feature.
-The schema is identical across features (``query`` + ``site``); only the underlying
-SDK call and the result attribute differ, so both are produced by small factories.
+The schema is identical across features (``query`` + ``site``); execution goes through
+the active backend (SDK or MCP, selected by ``WEBIQ_BACKEND``), so the agent works the
+same regardless of how WebIQ is accessed.
 """
 
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
 
 from azure.ai.projects.models import FunctionTool
 
-from webiq_playground.client import get_client
-from webiq_playground.web import search_web
-from webiq_playground.news import search_news
-from webiq_playground.videos import search_videos
-from webiq_playground.images import search_images
+from webiq_playground.backends.base import get_backend
 
 MAX_RESULTS = 5
-
-# Result list attribute names the WebIQ SDK may use across features.
-_RESULT_ATTRS = (
-    "webResults",
-    "newsResults",
-    "videoResults",
-    "imageResults",
-    "value",
-    "results",
-)
 
 
 def make_search_tool(tool_name: str, description: str) -> FunctionTool:
@@ -58,56 +44,30 @@ def make_search_tool(tool_name: str, description: str) -> FunctionTool:
     )
 
 
-def _pick(item: Any, names: tuple[str, ...]) -> Any:
-    for name in names:
-        value = getattr(item, name, None)
-        if value:
-            return value
-    return None
-
-
-def _extract_items(response: Any) -> list[Any]:
-    for attr in _RESULT_ATTRS:
-        items = getattr(response, attr, None)
-        if items:
-            return list(items)
-    return []
-
-
-def _search_to_json(search_fn: Callable[..., Any], query: str, site: str) -> str:
-    """Run a WebIQ search wrapper and return JSON the model can ground on."""
-    with get_client() as client:
-        response = search_fn(client, query, site=site or None, max_results=MAX_RESULTS)
-
-    results = []
-    for r in _extract_items(response):
-        results.append(
-            {
-                "title": _pick(r, ("title", "name")),
-                "url": _pick(r, ("url", "contentUrl", "hostPageUrl")),
-                "content": _pick(r, ("content", "description", "snippet")),
-            }
-        )
+def _search_to_json(feature: str, query: str, site: str) -> str:
+    """Run a WebIQ search via the active backend and return JSON to ground on."""
+    with get_backend() as backend:
+        result = backend.search(feature, query, site=site or None, max_results=MAX_RESULTS)
     return json.dumps(
-        {"results": results, "traceId": getattr(response, "traceId", None)},
+        {"results": [item.to_dict() for item in result.items], "traceId": result.trace_id},
         ensure_ascii=False,
     )
 
 
 def run_web_search(query: str, site: str = "") -> str:
-    return _search_to_json(search_web, query, site)
+    return _search_to_json("web", query, site)
 
 
 def run_news_search(query: str, site: str = "") -> str:
-    return _search_to_json(search_news, query, site)
+    return _search_to_json("news", query, site)
 
 
 def run_video_search(query: str, site: str = "") -> str:
-    return _search_to_json(search_videos, query, site)
+    return _search_to_json("videos", query, site)
 
 
 def run_image_search(query: str, site: str = "") -> str:
-    return _search_to_json(search_images, query, site)
+    return _search_to_json("images", query, site)
 
 
 # Per-feature tools (kept as module constants for convenience / tests).

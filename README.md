@@ -3,19 +3,21 @@
 A small Python playground for the **Microsoft Web IQ** APIs — a suite of AI-native
 search APIs that ground applications in fresh, real-world web content.
 
-It is built on the official [`webiq`](https://pypi.org/project/webiq/) SDK, with a thin
-wrapper per feature so the project can grow over time, plus an optional **Foundry
-grounding agent** (gpt-4o) that answers questions using WebIQ web search as a tool.
+The same features (web, news, videos, images) are reachable through **interchangeable
+backends**, so you can compare access methods without changing the CLI or the agent:
 
-| Feature       | Module      | SDK call                | Status |
-| ------------- | ----------- | ----------------------- | ------ |
-| Web Search    | `web.py`    | `client.web.search`     | GA     |
-| News Search   | `news.py`   | `client.news.search`    | Beta   |
-| Videos Search | `videos.py` | `client.videos.search`  | GA     |
-| Images Search | `images.py` | `client.images.search`  | Beta   |
+| Access method | Backend (`--backend`) | Transport                          | Status |
+| ------------- | --------------------- | ---------------------------------- | ------ |
+| SDK           | `sdk` (default)       | official [`webiq`](https://pypi.org/project/webiq/) SDK | ✅ |
+| MCP           | `mcp`                 | WebIQ MCP server (Streamable HTTP) | ✅ |
+| OpenAPI       | `openapi`             | generated from the OpenAPI spec    | ⏳ later |
 
-`client.py` builds the SDK client (`get_client`) and holds the `site:` helper; `cli.py`
-is a thin command-line front end. The Foundry agent lives under `agent/`.
+| Feature       | Status |
+| ------------- | ------ |
+| Web Search    | GA     |
+| News Search   | Beta   |
+| Videos Search | GA     |
+| Images Search | Beta   |
 
 ## Requirements
 
@@ -28,6 +30,7 @@ is a thin command-line front end. The Foundry agent lives under `agent/`.
 
 ```bash
 uv sync                 # install runtime deps (webiq SDK)
+uv sync --extra mcp     # add the MCP backend (official `mcp` SDK)
 cp .env.example .env    # then edit .env and paste your key
 ```
 
@@ -42,8 +45,11 @@ WEBIQ_API_KEY=<your-api-key>
 Run any feature via the `webiq` command (installed by `uv sync`):
 
 ```bash
-# Web search scoped to a single domain
+# Web search scoped to a single domain (SDK backend, the default)
 uv run webiq web "tax filing deadline" --site sars.gov.za
+
+# Same query via the MCP backend
+uv run webiq web "tax filing deadline" --site sars.gov.za --backend mcp
 
 # News, videos, images
 uv run webiq news "budget speech" --site sars.gov.za --max 10
@@ -51,25 +57,64 @@ uv run webiq videos "how to register for efiling"
 uv run webiq images "sars logo"
 ```
 
-Common flags: `--site <domain>`, `--max <n>` (1-50), `--region ZA`, `--language en`,
-`--save out.json`. The full JSON response is written to `webiq_response.json` by default.
+Common flags: `--backend {sdk,mcp}`, `--site <domain>`, `--max <n>` (1-50),
+`--region ZA`, `--language en`, `--save out.json`. The full JSON response is written to
+`webiq_response.json` by default. The backend can also be set with the `WEBIQ_BACKEND`
+environment variable (default `sdk`).
 
-Or use the package directly in Python:
+Or use the package directly in Python — every backend returns the same normalized
+`SearchResult`:
 
 ```python
-from webiq_playground import get_client, search_web
+from webiq_playground import get_backend
 
-with get_client() as client:                  # reads WEBIQ_API_KEY from .env
-    response = search_web(client, "tax filing deadline", site="sars.gov.za")
-    for r in response.webResults or []:
-        print(r.title, r.url)
+with get_backend("sdk") as backend:          # or "mcp"
+    result = backend.search("web", "tax filing deadline", site="sars.gov.za")
+    for item in result.items:
+        print(item.title, item.url)
 ```
+
+## Backends
+
+### SDK (`--backend sdk`)
+
+Uses the official `webiq` SDK directly (`client.<feature>.search`). Installed with the
+base `uv sync`.
+
+### MCP (`--backend mcp`)
+
+Talks to the **WebIQ MCP server** (`https://api.microsoft.ai/v3/mcp`, Streamable HTTP,
+JSON-RPC 2.0) via the official [`mcp`](https://pypi.org/project/mcp/) SDK. Install with
+`uv sync --extra mcp`. The endpoint can be overridden with `WEBIQ_MCP_ENDPOINT`.
+Tools accept the same parameters as the REST API (camelCase) and are scoped to your
+account's allow-list.
+
+To wire the WebIQ MCP server directly into **Copilot CLI** instead, add it to
+`%USERPROFILE%\.copilot\mcp-config.json`:
+
+```json
+{
+  "mcpServers": {
+    "webiq": {
+      "type": "http",
+      "url": "https://api.microsoft.ai/v3/mcp",
+      "authtype": "api-key",
+      "headers": { "x-apikey": "<your-api-key>" }
+    }
+  }
+}
+```
+
+### OpenAPI (`--backend openapi`)
+
+Placeholder — to be generated from the WebIQ OpenAPI specification later.
 
 ## Grounding agents (Foundry)
 
 Optional agents use **gpt-4o** on Azure AI Foundry with a WebIQ search tool wired in as a
-client-side function tool: the model calls e.g. `web_search`, we run the WebIQ SDK, and the
-model synthesizes a cited answer.
+client-side function tool: the model calls e.g. `web_search`, we run a WebIQ backend, and
+the model synthesizes a cited answer. The agent uses whichever backend `WEBIQ_BACKEND`
+selects (default `sdk`).
 
 There is **one agent per feature** (`web`, `news`, `videos`, `images`), all driven by the
 same engine — adding a feature is a single entry in `agent/registry.py`.
@@ -100,11 +145,12 @@ Agent names default to `webiq-<feature>-agent` and can be overridden per feature
 
 ## Authentication
 
-WebIQ auth is resolved automatically by `get_client()`:
+WebIQ auth is resolved automatically:
 
 1. **API key** (default) — set `WEBIQ_API_KEY`.
-2. **Entra ID** — leave `WEBIQ_API_KEY` unset and run `uv sync --extra entra`; the SDK
-   uses `DefaultAzureCredential`.
+2. **Entra ID** — leave `WEBIQ_API_KEY` unset and run `uv sync --extra entra`; both the
+   SDK and MCP backends fall back to `DefaultAzureCredential`
+   (scope `https://api.microsoft.ai/.default`).
 
 ## Site scoping
 
@@ -117,32 +163,42 @@ The `--site` flag (and the `site=` argument) append `site:<domain>` for you.
 webiq-playground/
 ├── src/
 │   └── webiq_playground/
-│       ├── __init__.py   # re-exports the public API
-│       ├── client.py     # get_client() (api key / Entra) + build_query()
-│       ├── web.py        # web search   (webiq SDK)
-│       ├── news.py       # news search  (beta)
-│       ├── videos.py     # videos search
-│       ├── images.py     # images search (beta)
-│       ├── cli.py        # `webiq` search CLI
+│       ├── __init__.py        # public API: get_backend, SearchResult, build_query, ...
+│       ├── cli.py             # `webiq --backend sdk|mcp <feature> ...`
+│       ├── core/
+│       │   ├── config.py      # endpoints, region, scope, env access
+│       │   ├── query.py       # build_query() (site: helper)
+│       │   └── models.py      # SearchItem / SearchResult / normalize_payload
+│       ├── backends/
+│       │   ├── base.py        # SearchBackend ABC, FEATURES, get_backend() factory
+│       │   ├── sdk/           # client.py (get_client) + backend.py (SdkBackend)
+│       │   ├── mcp/           # session.py (auth) + backend.py (McpBackend)
+│       │   └── openapi/       # placeholder for later
 │       └── agent/
-│           ├── tools.py        # FunctionTool + run_<feature>_search executors
-│           ├── registry.py     # AgentSpec per feature (the one place to add agents)
-│           ├── engine.py       # generic create_agent() + ask() tool loop
-│           └── cli.py          # `webiq-agent create|ask <feature>`
+│           ├── tools.py       # FunctionTool + run_<feature>_search (uses get_backend)
+│           ├── registry.py    # AgentSpec per feature (the one place to add agents)
+│           ├── engine.py      # generic create_agent() + ask() tool loop
+│           └── cli.py         # `webiq-agent create|ask <feature>`
 ├── tests/
-│   ├── test_client.py      # build_query + get_client auth selection
-│   ├── test_search.py      # web/news/videos/images wrappers (parametrized)
-│   └── test_agent.py       # tools, registry, engine tool loop
+│   ├── test_core.py           # build_query, models, normalize_payload
+│   ├── test_backends.py       # backend factory + SDK backend
+│   ├── test_mcp.py            # MCP backend arg-building / parsing (offline)
+│   └── test_agent.py          # tools, registry, engine tool loop
 ├── .env.example
 └── pyproject.toml
 ```
 
+### Adding a new backend
+
+1. Create `backends/<name>/backend.py` with a `SearchBackend` subclass implementing
+   `search(feature, query, ...)` and returning a normalized `SearchResult`.
+2. Register it in `get_backend()` (and add the name to `BACKENDS`) in `backends/base.py`.
+
 ### Adding a new feature agent
 
-1. Add a search wrapper module if it doesn't exist (e.g. `videos.py`).
-2. In `agent/tools.py`, add a `*_SEARCH_TOOL = make_search_tool(...)` and a
+1. In `agent/tools.py`, add a `*_SEARCH_TOOL = make_search_tool(...)` and a
    `run_<feature>_search` executor (one line via `_search_to_json`).
-3. Add one `AgentSpec` entry to `AGENTS` in `agent/registry.py`.
+2. Add one `AgentSpec` entry to `AGENTS` in `agent/registry.py`.
 
 The CLI, create/ask flow, date handling and tool loop work automatically — no new
 boilerplate.

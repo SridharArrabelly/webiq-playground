@@ -1,7 +1,7 @@
 [project]
 name = "webiq-playground"
-version = "0.1.0"
-description = "A playground for the Microsoft Web IQ SDK (web, news, videos, images) with a Foundry grounding agent."
+version = "0.2.0"
+description = "A multi-backend playground for the Microsoft Web IQ APIs (SDK, MCP, OpenAPI) with a Foundry grounding agent."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -11,6 +11,7 @@ dependencies = [
 
 [project.optional-dependencies]
 entra = ["webiq[entra]>=0.1.0", "azure-identity>=1.12"]
+mcp = ["mcp>=1.0"]
 agent = [
     "azure-ai-projects>=2.0.0",
     "azure-identity>=1.12",

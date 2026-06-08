@@ -1,18 +1,21 @@
-﻿"""WebIQ Playground - a thin wrapper around the official Microsoft webiq SDK."""
+"""WebIQ Playground — multi-backend access to the Microsoft Web IQ APIs.
 
-__version__ = "0.1.0"
+Features (web, news, videos, images) are reachable through interchangeable backends:
+SDK (`webiq`), MCP (the WebIQ MCP server), and later OpenAPI.
+"""
 
-from .client import build_query, get_client
-from .web import search_web
-from .news import search_news
-from .videos import search_videos
-from .images import search_images
+__version__ = "0.2.0"
+
+from .backends.base import FEATURES, get_backend
+from .core.config import DEFAULT_REGION
+from .core.models import SearchItem, SearchResult
+from .core.query import build_query
 
 __all__ = [
+    "FEATURES",
+    "get_backend",
     "build_query",
-    "get_client",
-    "search_web",
-    "search_news",
-    "search_videos",
-    "search_images",
+    "SearchItem",
+    "SearchResult",
+    "DEFAULT_REGION",
 ]

@@ -1,8 +1,8 @@
-﻿"""WebIQ Playground CLI (backed by the official webiq SDK).
+"""WebIQ Playground CLI — backend-agnostic (SDK or MCP).
 
 Usage:
   uv run webiq web "tax filing deadline" --site sars.gov.za
-  uv run webiq news "budget speech" --site sars.gov.za --max 10
+  uv run webiq news "budget speech" --max 10 --backend mcp
   uv run webiq videos "how to register for efiling"
   uv run webiq images "sars logo"
 """
@@ -12,78 +12,62 @@ from __future__ import annotations
 import argparse
 import json
 
-from .client import DEFAULT_REGION, get_client
-from .web import search_web
-from .news import search_news
-from .videos import search_videos
-from .images import search_images
+from .backends.base import BACKENDS, DEFAULT_BACKEND, FEATURES, get_backend
+from .core.config import DEFAULT_REGION
 
-# feature -> (function, response attribute holding the result list)
-FEATURES = {
-    "web": (search_web, "webResults"),
-    "news": (search_news, "newsResults"),
-    "videos": (search_videos, "videoResults"),
-    "images": (search_images, "imageResults"),
-}
-
-
-def _results(response, key):
-    return getattr(response, key, None) or []
-
-
-def _line(r):
-    title = getattr(r, "title", None) or getattr(r, "name", None)
-    url = getattr(r, "url", None) or getattr(r, "contentUrl", None) or getattr(r, "hostPageUrl", None)
-    text = getattr(r, "content", None) or getattr(r, "snippet", None) or getattr(r, "description", None) or ""
-    return title, url, str(text)
-
-
-def _jsonable(response):
-    for attr in ("model_dump", "to_dict", "dict"):
-        fn = getattr(response, attr, None)
-        if callable(fn):
-            return fn()
-    return response
+try:  # SDK is a base dependency, but stay defensive for MCP-only installs.
+    from webiq.errors import WebIQError
+except ImportError:  # pragma: no cover
+    WebIQError = Exception
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Microsoft Web IQ playground CLI")
-    parser.add_argument("feature", choices=FEATURES.keys())
+    parser.add_argument("feature", choices=FEATURES)
     parser.add_argument("query")
     parser.add_argument("--site", default=None, help="Restrict to a domain, e.g. sars.gov.za")
     parser.add_argument("--max", type=int, default=5, dest="max_results")
     parser.add_argument("--region", default=DEFAULT_REGION)
     parser.add_argument("--language", default="en")
+    parser.add_argument(
+        "--backend",
+        choices=BACKENDS,
+        default=None,
+        help=f"Access method (default: $WEBIQ_BACKEND or {DEFAULT_BACKEND})",
+    )
     parser.add_argument("--save", default="webiq_response.json")
     args = parser.parse_args(argv)
 
-    fn, key = FEATURES[args.feature]
     scope = f" (site:{args.site})" if args.site else ""
-    print(f"[*] {args.feature} search: {args.query!r}{scope}")
+    backend = get_backend(args.backend)
+    print(f"[*] {args.feature} search via {backend.name}: {args.query!r}{scope}")
 
-    with get_client() as client:
-        response = fn(
-            client,
-            args.query,
-            site=args.site,
-            max_results=args.max_results,
-            language=args.language,
-            region=args.region,
-        )
+    with backend:
+        try:
+            result = backend.search(
+                args.feature,
+                args.query,
+                site=args.site,
+                max_results=args.max_results,
+                language=args.language,
+                region=args.region,
+            )
+        except WebIQError as exc:
+            print(f"[!] WebIQ request failed: {exc}")
+            return 1
 
-    results = _results(response, key)
-    print(f"[*] {len(results)} result(s):")
-    for i, r in enumerate(results, 1):
-        title, url, text = _line(r)
+    print(f"[*] {len(result.items)} result(s):")
+    for i, item in enumerate(result.items, 1):
         print(f"\n--- {i} ---")
-        print(f"Title: {title}")
-        print(f"URL:   {url}")
-        if text:
+        print(f"Title: {item.title}")
+        print(f"URL:   {item.url}")
+        if item.content:
+            text = str(item.content)
             print(f"Text:  {text[:300]}{'...' if len(text) > 300 else ''}")
 
     if args.save:
         with open(args.save, "w", encoding="utf-8") as f:
-            json.dump(_jsonable(response), f, indent=2, ensure_ascii=False, default=str)
+            json.dump(result.to_dict(), f, indent=2, ensure_ascii=False, default=str)
         print(f"\n[*] Full response saved to {args.save}")
     return 0
 
