@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Default region for searches (2-letter country code).
-DEFAULT_REGION = "ZA"
+DEFAULT_REGION = "US"
 
 # Microsoft Web IQ endpoints.
 REST_BASE_URL = "https://api.microsoft.ai/v3"
