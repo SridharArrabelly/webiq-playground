@@ -91,6 +91,11 @@ def test_get_backend_explicit_overrides_env(monkeypatch):
     assert get_backend_name(base.get_backend("sdk")) == "sdk"
 
 
+def test_get_backend_supports_openapi(monkeypatch):
+    monkeypatch.delenv("WEBIQ_BACKEND", raising=False)
+    assert get_backend_name(base.get_backend("openapi")) == "openapi"
+
+
 def test_get_backend_unknown_raises():
     with pytest.raises(ValueError):
         base.get_backend("nope")

@@ -21,8 +21,8 @@ FEATURES: tuple[str, ...] = ("web", "news", "videos", "images")
 # (videos, images) do not.
 TEXT_FEATURES: frozenset[str] = frozenset({"web", "news"})
 
-# Known backend names (openapi is a placeholder for later).
-BACKENDS: tuple[str, ...] = ("sdk", "mcp")
+# Known backend names.
+BACKENDS: tuple[str, ...] = ("sdk", "mcp", "openapi")
 
 DEFAULT_BACKEND = "sdk"
 
@@ -78,4 +78,8 @@ def get_backend(name: str | None = None) -> SearchBackend:
         from webiq_playground.backends.mcp.backend import McpBackend
 
         return McpBackend()
+    if name == "openapi":
+        from webiq_playground.backends.openapi.backend import OpenApiBackend
+
+        return OpenApiBackend()
     raise ValueError(f"Unknown backend {name!r}; choose from {BACKENDS}")

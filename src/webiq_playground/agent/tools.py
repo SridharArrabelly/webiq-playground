@@ -27,12 +27,12 @@ def make_search_tool(tool_name: str, description: str) -> FunctionTool:
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "The search query, e.g. 'SARS tax filing deadline 2025'.",
+                    "description": "The search query, e.g. 'James Webb telescope discoveries 2026'.",
                 },
                 "site": {
                     "type": "string",
                     "description": (
-                        "Optional domain to restrict results to, e.g. 'sars.gov.za'. "
+                        "Optional domain to restrict results to, e.g. 'wikipedia.org'. "
                         "Use an empty string for no restriction."
                     ),
                 },

@@ -10,7 +10,7 @@ backends**, so you can compare access methods without changing the CLI or the ag
 | ------------- | --------------------- | ---------------------------------- | ------ |
 | SDK           | `sdk` (default)       | official [`webiq`](https://pypi.org/project/webiq/) SDK | ✅ |
 | MCP           | `mcp`                 | WebIQ MCP server (Streamable HTTP) | ✅ |
-| OpenAPI       | `openapi`             | generated from the OpenAPI spec    | ⏳ later |
+| OpenAPI       | `openapi`             | WebIQ REST API directly (`httpx`)  | ✅ |
 
 | Feature       | Status |
 | ------------- | ------ |
@@ -46,18 +46,19 @@ Run any feature via the `webiq` command (installed by `uv sync`):
 
 ```bash
 # Web search scoped to a single domain (SDK backend, the default)
-uv run webiq web "the latest research" --site https://research.google/blog/
+uv run webiq web "the latest research" --site research.google
 
-# Same query via the MCP backend
-uv run webiq web "the latest research" --site https://research.google/blog/ --backend mcp
+# Same query via the MCP or OpenAPI backend
+uv run webiq web "the latest research" --site research.google --backend mcp
+uv run webiq web "the latest research" --site research.google --backend openapi
 
 # News, videos, images
-uv run webiq news "The latest developments in AI, Tech and Robotics." --site https://www.therundown.ai/ --max 10
-uv run webiq videos "Latest AI trends"
+uv run webiq news "latest developments in AI and robotics" --site therundown.ai --max 10
+uv run webiq videos "latest AI trends"
 uv run webiq images "modern office workspace"
 ```
 
-Common flags: `--backend {sdk,mcp}`, `--site <domain>`, `--max <n>` (1-50),
+Common flags: `--backend {sdk,mcp,openapi}`, `--site <domain>`, `--max <n>` (1-50),
 `--region US`, `--language en`, `--save out.json`. The full JSON response is written to
 `webiq_response.json` by default. The backend can also be set with the `WEBIQ_BACKEND`
 environment variable (default `sdk`).
@@ -68,8 +69,8 @@ Or use the package directly in Python — every backend returns the same normali
 ```python
 from webiq_playground import get_backend
 
-with get_backend("sdk") as backend:          # or "mcp"
-    result = backend.search("web", ""the latest research", site="https://research.google/blog/")
+with get_backend("sdk") as backend:          # or "mcp" / "openapi"
+    result = backend.search("web", "the latest research", site="research.google")
     for item in result.items:
         print(item.title, item.url)
 ```
@@ -107,7 +108,10 @@ To wire the WebIQ MCP server directly into **Copilot CLI** instead, add it to
 
 ### OpenAPI (`--backend openapi`)
 
-Placeholder — to be generated from the WebIQ OpenAPI specification later.
+Calls the WebIQ **REST API** directly (`POST https://api.microsoft.ai/v3/search/{feature}`)
+with `httpx` — no SDK or MCP layer. It follows the same OpenAPI-described request/response
+contract as the SDK, and maps HTTP errors to the same `webiq.errors` types so failures
+(rate limits, auth) surface uniformly. No extra install needed.
 
 ## Grounding agents (Foundry)
 
@@ -126,7 +130,7 @@ az login                                            # auth uses DefaultAzureCred
 uv run webiq-agent create web                       # create/update one feature agent
 uv run webiq-agent create --all                     # create/update every feature agent
 
-uv run webiq-agent ask web "What is the latest developments in AI, Tech and Robotics.?"
+uv run webiq-agent ask web "latest developments in AI, tech and robotics"
 uv run webiq-agent ask news "latest news on quantum computing"
 ```
 
@@ -148,8 +152,8 @@ Agent names default to `webiq-<feature>-agent` and can be overridden per feature
 WebIQ auth is resolved automatically:
 
 1. **API key** (default) — set `WEBIQ_API_KEY`.
-2. **Entra ID** — leave `WEBIQ_API_KEY` unset and run `uv sync --extra entra`; both the
-   SDK and MCP backends fall back to `DefaultAzureCredential`
+2. **Entra ID** — leave `WEBIQ_API_KEY` unset and run `uv sync --extra entra`; all three
+   backends fall back to `DefaultAzureCredential`
    (scope `https://api.microsoft.ai/.default`).
 
 ## Site scoping
@@ -164,16 +168,17 @@ webiq-playground/
 ├── src/
 │   └── webiq_playground/
 │       ├── __init__.py        # public API: get_backend, SearchResult, build_query, ...
-│       ├── cli.py             # `webiq --backend sdk|mcp <feature> ...`
+│       ├── cli.py             # `webiq --backend sdk|mcp|openapi <feature> ...`
 │       ├── core/
 │       │   ├── config.py      # endpoints, region, scope, env access
+│       │   ├── auth.py        # auth_headers() (x-apikey / Entra) for HTTP backends
 │       │   ├── query.py       # build_query() (site: helper)
 │       │   └── models.py      # SearchItem / SearchResult / normalize_payload
 │       ├── backends/
 │       │   ├── base.py        # SearchBackend ABC, FEATURES, get_backend() factory
 │       │   ├── sdk/           # client.py (get_client) + backend.py (SdkBackend)
 │       │   ├── mcp/           # session.py (auth) + backend.py (McpBackend)
-│       │   └── openapi/       # placeholder for later
+│       │   └── openapi/       # backend.py (OpenApiBackend, REST over httpx)
 │       └── agent/
 │           ├── tools.py       # FunctionTool + run_<feature>_search (uses get_backend)
 │           ├── registry.py    # AgentSpec per feature (the one place to add agents)
@@ -183,6 +188,7 @@ webiq-playground/
 │   ├── test_core.py           # build_query, models, normalize_payload
 │   ├── test_backends.py       # backend factory + SDK backend
 │   ├── test_mcp.py            # MCP backend arg-building / parsing (offline)
+│   ├── test_openapi.py        # OpenAPI backend body/normalize/error mapping (offline)
 │   └── test_agent.py          # tools, registry, engine tool loop
 ├── .env.example
 └── pyproject.toml

@@ -32,7 +32,7 @@ _GROUNDING = (
 def _instructions(tool_name: str, what: str) -> str:
     return (
         f"{_PREAMBLE}When a question needs {what}, call the {tool_name} tool (optionally "
-        "scoping it to a site such as sars.gov.za) and put the resolved year in the query."
+        "scoping it to a site such as wikipedia.org) and put the resolved year in the query."
         f"{_GROUNDING}"
     )
 

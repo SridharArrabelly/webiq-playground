@@ -1,6 +1,10 @@
-"""OpenAPI backend — placeholder.
+"""OpenAPI backend: call the WebIQ REST API directly over HTTP.
 
-Planned: drive the WebIQ REST API from its OpenAPI specification (generated client or a
-spec-driven request builder), exposing the same `SearchBackend` contract as the SDK and
-MCP backends. Not implemented yet.
+Exposes the same :class:`~webiq_playground.backends.base.SearchBackend` contract as the
+SDK and MCP backends, driving the documented REST endpoints (``POST /search/{feature}``)
+with ``httpx``.
 """
+
+from webiq_playground.backends.openapi.backend import OpenApiBackend
+
+__all__ = ["OpenApiBackend"]

@@ -1017,6 +1017,7 @@ name = "webiq-playground"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx" },
     { name = "python-dotenv" },
     { name = "webiq" },
 ]
@@ -1045,6 +1046,7 @@ requires-dist = [
     { name = "azure-ai-projects", marker = "extra == 'agent'", specifier = ">=2.0.0" },
     { name = "azure-identity", marker = "extra == 'agent'", specifier = ">=1.12" },
     { name = "azure-identity", marker = "extra == 'entra'", specifier = ">=1.12" },
+    { name = "httpx", specifier = ">=0.27" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.0" },
     { name = "openai", marker = "extra == 'agent'", specifier = ">=1.55.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },

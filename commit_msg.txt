@@ -1,0 +1,25 @@
+Add OpenAPI (REST) backend; refresh example queries
+
+Third backend completing the SDK/MCP/OpenAPI set. OpenApiBackend calls the
+WebIQ REST API directly (POST /search/{feature}) over httpx, following the
+same OpenAPI request/response contract as the SDK and returning a normalized
+SearchResult. HTTP errors map to webiq.errors types (429->RateLimitError,
+401->AuthenticationError, 403->PermissionDeniedError, else APIStatusError)
+so the CLI handles every backend's failures uniformly.
+
+- core/auth.py: shared auth_headers() (x-apikey / cached Entra credential),
+  now used by both the MCP and OpenAPI backends (mcp/session.py re-exports it)
+- backends/openapi/backend.py: OpenApiBackend (persistent httpx.Client,
+  camelCase body, contentFormat/maxLength only for web/news, non-JSON-safe
+  error extraction, x-traceid/body traceId)
+- base.py: register "openapi" in BACKENDS + get_backend() factory
+  (CLI --backend picks it up automatically)
+- pyproject: add httpx>=0.27 as a direct dependency
+- tests/test_openapi.py + an openapi factory test (31 pass total)
+- Replace SARS-specific examples with generic ones across cli/registry/tools
+  and README; fix README site examples (bare domain) and a Python snippet typo
+- README: OpenAPI row marked done, backend documented, layout updated
+
+Live-verified: web and videos search via sdk, mcp and openapi all return results.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
