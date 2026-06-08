@@ -1,7 +1,0 @@
-Handle WebIQ API errors gracefully in the CLI
-
-Rate-limit (429) and other WebIQ server errors previously surfaced as a
-raw traceback. Catch webiq.errors.WebIQError around backend.search and
-print a clean "[!] WebIQ request failed: ..." message with exit code 1.
-
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>

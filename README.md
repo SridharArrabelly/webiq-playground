@@ -46,19 +46,19 @@ Run any feature via the `webiq` command (installed by `uv sync`):
 
 ```bash
 # Web search scoped to a single domain (SDK backend, the default)
-uv run webiq web "tax filing deadline" --site sars.gov.za
+uv run webiq web "the latest research" --site https://research.google/blog/
 
 # Same query via the MCP backend
-uv run webiq web "tax filing deadline" --site sars.gov.za --backend mcp
+uv run webiq web "the latest research" --site https://research.google/blog/ --backend mcp
 
 # News, videos, images
-uv run webiq news "budget speech" --site sars.gov.za --max 10
-uv run webiq videos "how to register for efiling"
-uv run webiq images "sars logo"
+uv run webiq news "The latest developments in AI, Tech and Robotics." --site https://www.therundown.ai/ --max 10
+uv run webiq videos "Latest AI trends"
+uv run webiq images "modern office workspace"
 ```
 
 Common flags: `--backend {sdk,mcp}`, `--site <domain>`, `--max <n>` (1-50),
-`--region ZA`, `--language en`, `--save out.json`. The full JSON response is written to
+`--region US`, `--language en`, `--save out.json`. The full JSON response is written to
 `webiq_response.json` by default. The backend can also be set with the `WEBIQ_BACKEND`
 environment variable (default `sdk`).
 
@@ -69,7 +69,7 @@ Or use the package directly in Python — every backend returns the same normali
 from webiq_playground import get_backend
 
 with get_backend("sdk") as backend:          # or "mcp"
-    result = backend.search("web", "tax filing deadline", site="sars.gov.za")
+    result = backend.search("web", ""the latest research", site="https://research.google/blog/")
     for item in result.items:
         print(item.title, item.url)
 ```
@@ -126,8 +126,8 @@ az login                                            # auth uses DefaultAzureCred
 uv run webiq-agent create web                       # create/update one feature agent
 uv run webiq-agent create --all                     # create/update every feature agent
 
-uv run webiq-agent ask web "What is the SARS tax filing deadline this year?"
-uv run webiq-agent ask news "latest SARS media releases"
+uv run webiq-agent ask web "What is the latest developments in AI, Tech and Robotics.?"
+uv run webiq-agent ask news "latest news on quantum computing"
 ```
 
 Each query begins with a `[Current date: YYYY-MM-DD]` tag the agent injects, so the model
