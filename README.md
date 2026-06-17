@@ -215,7 +215,11 @@ webiq-playground/
 │   ├── test_openapi.py        # OpenAPI backend search/normalize/error mapping (offline)
 │   └── test_agent.py          # tools, registry, engine tool loop
 ├── .env.example
-└── pyproject.toml
+├── .gitignore
+├── pyproject.toml
+├── uv.lock
+├── LICENSE
+└── README.md
 ```
 
 ### Adding a new backend
