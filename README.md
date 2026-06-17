@@ -48,6 +48,9 @@ Run any feature via the `webiq` command (installed by `uv sync`):
 # Web search scoped to a single domain (SDK backend, the default)
 uv run webiq web "what is retrieval augmented generation" --site learn.microsoft.com
 
+# Scope to two domains (results from either); repeat --site or comma-separate
+uv run webiq web "open source LLMs" --site github.com --site huggingface.co
+
 # Same query via the MCP or OpenAPI backend
 uv run webiq web "what is retrieval augmented generation" --backend mcp
 uv run webiq web "what is retrieval augmented generation" --backend openapi
@@ -58,10 +61,10 @@ uv run webiq videos "how to make sourdough bread"
 uv run webiq images "aurora borealis"
 ```
 
-Common flags: `--backend {sdk,mcp,openapi}`, `--site <domain>`, `--max <n>` (1-50),
-`--region US`, `--language en`, `--save out.json`. The full JSON response is written to
-`webiq_response.json` by default. The backend can also be set with the `WEBIQ_BACKEND`
-environment variable (default `sdk`).
+Common flags: `--backend {sdk,mcp,openapi}`, `--site <domain>` (repeatable; `--site=-domain`
+to exclude), `--max <n>` (1-50), `--region US`, `--language en`, `--save out.json`. The full
+JSON response is written to `webiq_response.json` by default. The backend can also be set
+with the `WEBIQ_BACKEND` environment variable (default `sdk`).
 
 Or use the package directly in Python — every backend returns the same normalized
 `SearchResult`:
@@ -226,8 +229,37 @@ WebIQ auth is resolved automatically:
 
 ## Site scoping
 
-The Web IQ APIs support the `site:` / `-site:` operators inside the `query` field.
-The `--site` flag (and the `site=` argument) append `site:<domain>` for you.
+The Web IQ APIs support the `site:` / `-site:` operators inside the `query` field, and
+`build_query()` (used by the CLI `--site` flag and the `site=` argument) assembles them for
+**one or more** domains:
+
+- **Include** several domains — they are OR-ed, so results may come from any of them.
+- **Exclude** a domain — prefix it with `-`.
+
+```bash
+# Single domain
+uv run webiq web "what is retrieval augmented generation" --site learn.microsoft.com
+
+# Two domains (results from either) — repeat --site or comma-separate
+uv run webiq web "open source LLMs" --site github.com --site huggingface.co
+
+# Include one, exclude another (use --site=-domain so argparse keeps the leading dash)
+uv run webiq web "retrieval augmented generation" --site arxiv.org --site=-wikipedia.org
+```
+
+```python
+from webiq_playground import build_query, get_backend
+
+build_query("open source LLMs", ["github.com", "huggingface.co"])
+# -> "open source LLMs (site:github.com OR site:huggingface.co)"
+
+with get_backend() as backend:
+    backend.search("web", "open source LLMs", site=["github.com", "huggingface.co"])
+    backend.search("web", "rag", site="arxiv.org,-wikipedia.org")   # include + exclude
+```
+
+> Per the API's own guidance, `site:` filters reduce result relevance — use them only when
+> you really need to constrain the sources.
 
 ## Project layout
 

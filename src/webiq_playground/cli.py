@@ -2,6 +2,7 @@
 
 Usage:
   uv run webiq web "what is retrieval augmented generation" --site learn.microsoft.com
+  uv run webiq web "open source LLMs" --site github.com --site huggingface.co
   uv run webiq news "latest space exploration news" --max 10 --backend mcp
   uv run webiq videos "how to make sourdough bread"
   uv run webiq images "aurora borealis"
@@ -14,6 +15,7 @@ import json
 
 from .backends.base import BACKENDS, DEFAULT_BACKEND, FEATURES, get_backend
 from .core.config import DEFAULT_REGION
+from .core.query import build_query
 
 try:  # SDK is a base dependency, but stay defensive for MCP-only installs.
     from webiq.errors import WebIQError
@@ -25,7 +27,14 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Microsoft Web IQ playground CLI")
     parser.add_argument("feature", choices=FEATURES)
     parser.add_argument("query")
-    parser.add_argument("--site", default=None, help="Restrict to a domain, e.g. learn.microsoft.com")
+    parser.add_argument(
+        "--site",
+        action="append",
+        default=None,
+        metavar="DOMAIN",
+        help="Restrict to a domain (repeatable or comma-separated); exclude with a '-' "
+        "prefix using '=', e.g. --site learn.microsoft.com --site=-wikipedia.org",
+    )
     parser.add_argument("--max", type=int, default=5, dest="max_results")
     parser.add_argument("--region", default=DEFAULT_REGION)
     parser.add_argument("--language", default="en")
@@ -38,7 +47,7 @@ def main(argv=None) -> int:
     parser.add_argument("--save", default="webiq_response.json")
     args = parser.parse_args(argv)
 
-    scope = f" (site:{args.site})" if args.site else ""
+    scope = f" [{build_query('', args.site).strip()}]" if args.site else ""
     backend = get_backend(args.backend)
     print(f"[*] {args.feature} search via {backend.name}: {args.query!r}{scope}")
 

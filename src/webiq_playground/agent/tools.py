@@ -32,8 +32,11 @@ def make_search_tool(tool_name: str, description: str) -> FunctionTool:
                 "site": {
                     "type": "string",
                     "description": (
-                        "Optional domain to restrict results to, e.g. 'wikipedia.org'. "
-                        "Use an empty string for no restriction."
+                        "Optional domain(s) to scope results to, e.g. 'wikipedia.org'. "
+                        "Pass several as a comma-separated list (results may come from any "
+                        "of them), and prefix a domain with '-' to exclude it, e.g. "
+                        "'github.com,huggingface.co,-reddit.com'. Use an empty string for "
+                        "no restriction."
                     ),
                 },
             },

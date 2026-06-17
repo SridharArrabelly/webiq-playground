@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Sequence
 
 from webiq_playground.core.config import DEFAULT_REGION
 from webiq_playground.core.models import SearchResult, normalize_payload
@@ -46,7 +46,7 @@ class SearchBackend(ABC):
         feature: str,
         query: str,
         *,
-        site: str | None = None,
+        site: str | Sequence[str] | None = None,
         max_results: int = DEFAULT_MAX_RESULTS,
         language: str = "en",
         region: str = DEFAULT_REGION,

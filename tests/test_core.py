@@ -12,6 +12,38 @@ def test_build_query_without_site_is_unchanged():
     assert build_query("tax") == "tax"
 
 
+def test_build_query_multiple_includes_are_or_grouped():
+    assert (
+        build_query("llm", ["github.com", "huggingface.co"])
+        == "llm (site:github.com OR site:huggingface.co)"
+    )
+
+
+def test_build_query_comma_separated_string():
+    assert (
+        build_query("llm", "github.com, huggingface.co")
+        == "llm (site:github.com OR site:huggingface.co)"
+    )
+
+
+def test_build_query_excludes_are_repeated():
+    assert (
+        build_query("rag", "-wikipedia.org,-github.com")
+        == "rag -site:wikipedia.org -site:github.com"
+    )
+
+
+def test_build_query_mixes_includes_and_excludes():
+    assert (
+        build_query("rag", ["arxiv.org", "-wikipedia.org"])
+        == "rag site:arxiv.org -site:wikipedia.org"
+    )
+
+
+def test_build_query_tolerates_site_prefix_and_blanks():
+    assert build_query("rag", ["site:arxiv.org", "", "  "]) == "rag site:arxiv.org"
+
+
 def test_normalize_web_payload():
     payload = {
         "webResults": [
