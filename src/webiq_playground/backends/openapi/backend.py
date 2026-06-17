@@ -20,15 +20,9 @@ from webiq.errors import (
     WebIQError,
 )
 
-from webiq_playground.backends.base import (
-    TEXT_FEATURES,
-    SearchBackend,
-    _validate_feature,
-)
+from webiq_playground.backends.base import SearchBackend
 from webiq_playground.core.auth import auth_headers
-from webiq_playground.core.config import DEFAULT_REGION, REST_BASE_URL
-from webiq_playground.core.models import SearchResult, normalize_payload
-from webiq_playground.core.query import build_query
+from webiq_playground.core.config import REST_BASE_URL
 
 _REQUEST_TIMEOUT = 30.0
 
@@ -85,49 +79,13 @@ class OpenApiBackend(SearchBackend):
         if client is not None:
             client.close()
 
-    def _build_body(
-        self,
-        feature: str,
-        query: str,
-        site: str | None,
-        max_results: int,
-        language: str,
-        region: str,
-        max_length: int,
-    ) -> dict[str, Any]:
-        body: dict[str, Any] = {
-            "query": build_query(query, site),
-            "maxResults": max_results,
-            "language": language,
-            "region": region,
-        }
-        if feature in TEXT_FEATURES:
-            body["contentFormat"] = "text"
-            body["maxLength"] = max_length
-        return body
-
-    def search(
-        self,
-        feature: str,
-        query: str,
-        *,
-        site: str | None = None,
-        max_results: int = 5,
-        language: str = "en",
-        region: str = DEFAULT_REGION,
-        max_length: int = 2000,
-    ) -> SearchResult:
-        _validate_feature(feature)
-        body = self._build_body(
-            feature, query, site, max_results, language, region, max_length
-        )
-
+    def _run(self, feature: str, params: dict[str, Any]) -> dict[str, Any]:
         try:
             response = self._ensure_client().post(
-                f"/search/{feature}", json=body, headers=auth_headers()
+                f"/search/{feature}", json=params, headers=auth_headers()
             )
         except httpx.HTTPError as exc:
             raise WebIQError(f"WebIQ REST request failed: {exc}") from exc
 
         _raise_for_status(response)
-        return normalize_payload(feature, self.name, response.json())
+        return response.json()

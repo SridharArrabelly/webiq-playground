@@ -4,11 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from webiq_playground.backends.base import TEXT_FEATURES, SearchBackend, _validate_feature
+from webiq_playground.backends.base import SearchBackend
 from webiq_playground.backends.sdk.client import get_client
-from webiq_playground.core.config import DEFAULT_REGION
-from webiq_playground.core.models import SearchResult, normalize_payload
-from webiq_playground.core.query import build_query
 
 
 def _to_payload(response: Any) -> dict[str, Any]:
@@ -42,31 +39,19 @@ class SdkBackend(SearchBackend):
         if client is not None and hasattr(client, "close"):
             client.close()
 
-    def search(
-        self,
-        feature: str,
-        query: str,
-        *,
-        site: str | None = None,
-        max_results: int = 5,
-        language: str = "en",
-        region: str = DEFAULT_REGION,
-        max_length: int = 2000,
-    ) -> SearchResult:
-        _validate_feature(feature)
-        client = self._ensure_client()
-        namespace = getattr(client, feature)
+    def _run(self, feature: str, params: dict[str, Any]) -> dict[str, Any]:
+        namespace = getattr(self._ensure_client(), feature)
 
         kwargs: dict[str, Any] = {
-            "max_results": max_results,
-            "language": language,
-            "region": region,
+            "max_results": params["maxResults"],
+            "language": params["language"],
+            "region": params["region"],
         }
-        if feature in TEXT_FEATURES:
+        if "contentFormat" in params:
             from webiq.types import ContentFormat
 
-            kwargs["content_format"] = ContentFormat.text
-            kwargs["max_length"] = max_length
+            kwargs["content_format"] = ContentFormat(params["contentFormat"])
+            kwargs["max_length"] = params["maxLength"]
 
-        response = namespace.search(build_query(query, site), **kwargs)
-        return normalize_payload(feature, self.name, _to_payload(response))
+        response = namespace.search(params["query"], **kwargs)
+        return _to_payload(response)

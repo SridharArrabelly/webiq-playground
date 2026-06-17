@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
+from typing import Any
 
 from webiq_playground.core.config import DEFAULT_REGION
-from webiq_playground.core.models import SearchResult
+from webiq_playground.core.models import SearchResult, normalize_payload
+from webiq_playground.core.params import DEFAULT_MAX_LENGTH, DEFAULT_MAX_RESULTS, wire_params
+from webiq_playground.core.query import build_query
 
 # Search features common to every backend.
 FEATURES: tuple[str, ...] = ("web", "news", "videos", "images")
@@ -28,24 +31,47 @@ DEFAULT_BACKEND = "sdk"
 
 
 class SearchBackend(ABC):
-    """Common interface implemented by every WebIQ backend."""
+    """Common interface implemented by every WebIQ backend.
+
+    ``search`` is a template method: it validates the feature, builds the shared request
+    parameters and normalizes the response. Each backend only implements :meth:`_run`,
+    which performs the transport-specific call and returns the raw WebIQ payload.
+    """
 
     #: Short backend identifier, e.g. "sdk" or "mcp".
     name: str
 
-    @abstractmethod
     def search(
         self,
         feature: str,
         query: str,
         *,
         site: str | None = None,
-        max_results: int = 5,
+        max_results: int = DEFAULT_MAX_RESULTS,
         language: str = "en",
         region: str = DEFAULT_REGION,
-        max_length: int = 2000,
+        max_length: int = DEFAULT_MAX_LENGTH,
     ) -> SearchResult:
         """Run ``feature`` search for ``query`` and return a normalized result."""
+        _validate_feature(feature)
+        params = wire_params(
+            build_query(query, site),
+            max_results=max_results,
+            language=language,
+            region=region,
+            max_length=max_length,
+            text=feature in TEXT_FEATURES,
+        )
+        payload = self._run(feature, params)
+        return normalize_payload(feature, self.name, payload)
+
+    @abstractmethod
+    def _run(self, feature: str, params: dict[str, Any]) -> dict[str, Any]:
+        """Send the request for ``feature`` with ``params`` and return the raw payload.
+
+        ``params`` is the canonical request body from
+        :func:`~webiq_playground.core.params.wire_params`.
+        """
 
     def close(self) -> None:  # pragma: no cover - optional override
         """Release any held resources. No-op by default."""

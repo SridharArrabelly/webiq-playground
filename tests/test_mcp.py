@@ -1,4 +1,4 @@
-"""Tests for the MCP backend: arg mapping + result parsing (offline, no network).
+"""Tests for the MCP backend: result parsing + search wiring (offline, no network).
 
 Skipped unless the `mcp` extra is installed.
 """
@@ -8,27 +8,6 @@ import pytest
 pytest.importorskip("mcp")
 
 from webiq_playground.backends.mcp import backend as mcp_backend
-
-
-def test_build_args_text_feature_includes_content_format():
-    b = mcp_backend.McpBackend()
-    args = b._build_args("web", "deadline", "sars.gov.za", 7, "en", "ZA", 1500)
-    assert args == {
-        "query": "deadline site:sars.gov.za",
-        "maxResults": 7,
-        "language": "en",
-        "region": "ZA",
-        "contentFormat": "text",
-        "maxLength": 1500,
-    }
-
-
-def test_build_args_media_feature_omits_content_format():
-    b = mcp_backend.McpBackend()
-    args = b._build_args("images", "logo", None, 5, "en", "ZA", 2000)
-    assert "contentFormat" not in args
-    assert "maxLength" not in args
-    assert args["query"] == "logo"
 
 
 def test_payload_from_structured_content():

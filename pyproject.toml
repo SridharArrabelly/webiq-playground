@@ -3,6 +3,8 @@ name = "webiq-playground"
 version = "0.2.0"
 description = "A multi-backend playground for the Microsoft Web IQ APIs (SDK, MCP, OpenAPI) with a Foundry grounding agent."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     "webiq>=0.1.0",

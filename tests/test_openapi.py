@@ -1,4 +1,4 @@
-"""Tests for the OpenAPI (REST) backend: body building, normalization, error mapping.
+"""Tests for the OpenAPI (REST) backend: search wiring, normalization, error mapping.
 
 Offline — the httpx client's POST is monkeypatched, so no network is used.
 """
@@ -20,27 +20,6 @@ def _response(status_code, json_body=None, *, text="", headers=None):
         headers=headers or {},
         request=httpx.Request("POST", "https://example/search/web"),
     )
-
-
-def test_build_body_text_feature_includes_content_format():
-    b = OpenApiBackend()
-    body = b._build_body("web", "deadline", "wikipedia.org", 7, "en", "ZA", 1500)
-    assert body == {
-        "query": "deadline site:wikipedia.org",
-        "maxResults": 7,
-        "language": "en",
-        "region": "ZA",
-        "contentFormat": "text",
-        "maxLength": 1500,
-    }
-
-
-def test_build_body_media_feature_omits_content_format():
-    b = OpenApiBackend()
-    body = b._build_body("images", "logo", None, 5, "en", "ZA", 2000)
-    assert "contentFormat" not in body
-    assert "maxLength" not in body
-    assert body["query"] == "logo"
 
 
 def test_search_posts_and_normalizes(monkeypatch):

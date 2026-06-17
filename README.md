@@ -75,6 +75,28 @@ with get_backend("sdk") as backend:          # or "mcp" / "openapi"
         print(item.title, item.url)
 ```
 
+## Architecture
+
+All three backends share one request/response contract, so the CLI, the agent and your
+own code never depend on *how* WebIQ is reached:
+
+- **One request shape.** The REST API, the MCP tools and the SDK all accept the *same*
+  parameters. `core/params.py` (`wire_params`) builds that canonical request body once;
+  the SDK backend simply translates it into the SDK's snake_case keyword arguments.
+- **One response shape.** `core/models.py` (`normalize_payload`) maps every backend's raw
+  payload into the same `SearchResult` / `SearchItem`.
+- **Template method.** `SearchBackend.search()` in `backends/base.py` validates the
+  feature, builds the parameters and normalizes the response. Each backend only implements
+  `_run(feature, params)` — the transport-specific call that returns the raw payload.
+
+```
+search(feature, query, …)            ← base.py (shared: validate → wire_params → normalize)
+        │
+        └── _run(feature, params)     ← per backend (SDK call / MCP tool / REST POST)
+```
+
+This is why adding a backend or a feature is a tiny, localized change (see below).
+
 ## Backends
 
 ### SDK (`--backend sdk`)
@@ -173,9 +195,10 @@ webiq-playground/
 │       │   ├── config.py      # endpoints, region, scope, env access
 │       │   ├── auth.py        # auth_headers() (x-apikey / Entra) for HTTP backends
 │       │   ├── query.py       # build_query() (site: helper)
+│       │   ├── params.py      # wire_params() — the shared request contract
 │       │   └── models.py      # SearchItem / SearchResult / normalize_payload
 │       ├── backends/
-│       │   ├── base.py        # SearchBackend ABC, FEATURES, get_backend() factory
+│       │   ├── base.py        # SearchBackend ABC (template-method search + _run), factory
 │       │   ├── sdk/           # client.py (get_client) + backend.py (SdkBackend)
 │       │   ├── mcp/           # session.py (auth) + backend.py (McpBackend)
 │       │   └── openapi/       # backend.py (OpenApiBackend, REST over httpx)
@@ -186,9 +209,10 @@ webiq-playground/
 │           └── cli.py         # `webiq-agent create|ask <feature>`
 ├── tests/
 │   ├── test_core.py           # build_query, models, normalize_payload
+│   ├── test_params.py         # wire_params (the shared request contract)
 │   ├── test_backends.py       # backend factory + SDK backend
-│   ├── test_mcp.py            # MCP backend arg-building / parsing (offline)
-│   ├── test_openapi.py        # OpenAPI backend body/normalize/error mapping (offline)
+│   ├── test_mcp.py            # MCP backend result parsing / search wiring (offline)
+│   ├── test_openapi.py        # OpenAPI backend search/normalize/error mapping (offline)
 │   └── test_agent.py          # tools, registry, engine tool loop
 ├── .env.example
 └── pyproject.toml
@@ -196,8 +220,10 @@ webiq-playground/
 
 ### Adding a new backend
 
-1. Create `backends/<name>/backend.py` with a `SearchBackend` subclass implementing
-   `search(feature, query, ...)` and returning a normalized `SearchResult`.
+1. Create `backends/<name>/backend.py` with a `SearchBackend` subclass that implements
+   `_run(feature, params)` — make the transport call and return the raw WebIQ payload.
+   (`params` is the camelCase body from `wire_params`; validation and normalization are
+   handled by the base `search()`.)
 2. Register it in `get_backend()` (and add the name to `BACKENDS`) in `backends/base.py`.
 
 ### Adding a new feature agent
@@ -212,3 +238,28 @@ boilerplate.
 ## Support
 
 Web IQ technical issues / feedback: WebIQ-Support@microsoft.com
+
+## Reference documentation
+
+- [Web IQ portal](https://aka.ms/webiq-portal) — overview, onboarding and access requests
+- [Web IQ documentation](https://webiq.microsoft.ai/documentation) — full developer docs
+  - [Authentication](https://webiq.microsoft.ai/documentation/authentication) — API key & Entra ID setup
+  - [REST API reference](https://webiq.microsoft.ai/documentation/api-reference/web) — endpoints, parameters, responses, error codes (used by the OpenAPI backend)
+  - [MCP server](https://webiq.microsoft.ai/documentation/mcp) — MCP endpoint, tools and configuration (used by the MCP backend)
+- [`webiq` Python SDK](https://pypi.org/project/webiq/) — the official SDK (used by the SDK backend)
+- [`mcp` Python SDK](https://pypi.org/project/mcp/) — the official Model Context Protocol SDK
+- [Model Context Protocol](https://modelcontextprotocol.io/) — the open MCP standard
+- [Azure AI Foundry Agents](https://learn.microsoft.com/azure/ai-foundry/agents/) — the grounding-agent runtime
+- [`azure-identity` (`DefaultAzureCredential`)](https://learn.microsoft.com/python/api/overview/azure/identity-readme) — Entra ID authentication
+- [uv](https://docs.astral.sh/uv/) — the Python package & project manager used here
+- Request access: [Web IQ waitlist](https://aka.ms/webiq-waitlist)
+
+## License
+
+Released under the [MIT License](LICENSE).
+
+This is an unofficial sample/playground for exploring the Microsoft Web IQ APIs and is not
+an official Microsoft product. "Microsoft", "Web IQ", "Azure" and related names are
+trademarks of Microsoft Corporation. Your use of the Web IQ service is governed by the
+terms you accepted with Microsoft, not by this repository's license.
+
