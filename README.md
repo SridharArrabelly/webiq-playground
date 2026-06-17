@@ -77,25 +77,37 @@ with get_backend("sdk") as backend:          # or "mcp" / "openapi"
 
 ## Architecture
 
-All three backends share one request/response contract, so the CLI, the agent and your
-own code never depend on *how* WebIQ is reached:
+The CLI, the agent and your own code all call one method — `backend.search(...)` — and get
+back one shape — `SearchResult` — no matter which backend runs. Each backend differs only
+in the one step that actually talks to WebIQ.
+
+```
+caller (CLI / agent / your code)
+   │   backend.search("web", "your query", site=…, max_results=…)
+   ▼
+SearchBackend.search()                         ← base.py, shared by every backend
+   1. validate the feature (web / news / videos / images)
+   2. build_query()    → append the `site:` operator        (core/query.py)
+   3. wire_params()    → canonical request body (camelCase)  (core/params.py)
+   4. _run(feature, params)  ─── the ONLY per-backend step ───┐
+   5. normalize_payload() → SearchResult / SearchItem  (core/models.py)
+   │                                                          │
+   ▼                                                          ▼
+SearchResult (same shape every time)            SDK      → client.<feature>.search(**kwargs)
+                                                MCP      → call the MCP tool (JSON-RPC)
+                                                OpenAPI  → POST /search/{feature} (httpx)
+```
+
+Why it's built this way:
 
 - **One request shape.** The REST API, the MCP tools and the SDK all accept the *same*
-  parameters. `core/params.py` (`wire_params`) builds that canonical request body once;
-  the SDK backend simply translates it into the SDK's snake_case keyword arguments.
-- **One response shape.** `core/models.py` (`normalize_payload`) maps every backend's raw
-  payload into the same `SearchResult` / `SearchItem`.
-- **Template method.** `SearchBackend.search()` in `backends/base.py` validates the
-  feature, builds the parameters and normalizes the response. Each backend only implements
-  `_run(feature, params)` — the transport-specific call that returns the raw payload.
-
-```
-search(feature, query, …)            ← base.py (shared: validate → wire_params → normalize)
-        │
-        └── _run(feature, params)     ← per backend (SDK call / MCP tool / REST POST)
-```
-
-This is why adding a backend or a feature is a tiny, localized change (see below).
+  parameters, so `wire_params()` builds the request body once. The SDK backend just renames
+  those keys to the SDK's snake_case keyword arguments.
+- **One response shape.** `normalize_payload()` folds every backend's raw payload into the
+  same `SearchResult` / `SearchItem`, so callers never touch backend-specific JSON.
+- **One place to extend.** Because `search()` owns validation, query building and
+  normalization, a new backend only implements `_run()` — see
+  [Adding a new backend](#adding-a-new-backend).
 
 ## Backends
 
