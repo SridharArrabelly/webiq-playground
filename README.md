@@ -210,7 +210,8 @@ webiq-playground/
 ├── tests/
 │   ├── test_core.py           # build_query, models, normalize_payload
 │   ├── test_params.py         # wire_params (the shared request contract)
-│   ├── test_backends.py       # backend factory + SDK backend
+│   ├── test_backends.py       # get_backend() factory (backend selection)
+│   ├── test_sdk.py            # SDK backend (offline, faked SDK client)
 │   ├── test_mcp.py            # MCP backend result parsing / search wiring (offline)
 │   ├── test_openapi.py        # OpenAPI backend search/normalize/error mapping (offline)
 │   └── test_agent.py          # tools, registry, engine tool loop
