@@ -17,6 +17,8 @@ from azure.ai.projects.models import MCPTool, PromptAgentDefinition
 from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv
 
+from webiq_playground.core.config import MCP_ENDPOINT
+
 load_dotenv()
 
 # Foundry agent name (overridable via env) and the WebIQ tools the hosted server exposes.
@@ -48,10 +50,16 @@ def _connection_id() -> str:
 
 
 def build_tool() -> MCPTool:
-    """Build the hosted MCP tool bound to the WebIQ-MCP Foundry connection."""
+    """Build the hosted MCP tool bound to the WebIQ-MCP Foundry connection.
+
+    ``server_url`` is the WebIQ MCP endpoint Foundry calls; ``project_connection_id`` is the
+    Foundry connection that supplies the auth (the ``x-apikey`` header). Foundry requires the
+    endpoint to be present on the tool, so both are set.
+    """
     return MCPTool(
         type="mcp",
         server_label=WEBIQ_MCP_SERVER_LABEL,
+        server_url=MCP_ENDPOINT,
         project_connection_id=_connection_id(),
         require_approval="never",
         allowed_tools=list(WEBIQ_MCP_TOOLS),

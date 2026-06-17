@@ -19,6 +19,7 @@ def test_build_tool_wires_connection(monkeypatch):
     assert isinstance(tool, MCPTool)
     assert tool.type == "mcp"
     assert tool.server_label == hosted_mcp.WEBIQ_MCP_SERVER_LABEL
+    assert tool.server_url == hosted_mcp.MCP_ENDPOINT
     assert tool.project_connection_id == "WebIQ-MCP"
     assert tool.require_approval == "never"
     assert tool.allowed_tools == hosted_mcp.WEBIQ_MCP_TOOLS
