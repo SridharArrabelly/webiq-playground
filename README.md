@@ -46,16 +46,16 @@ Run any feature via the `webiq` command (installed by `uv sync`):
 
 ```bash
 # Web search scoped to a single domain (SDK backend, the default)
-uv run webiq web "the latest research" --site research.google
+uv run webiq web "what is retrieval augmented generation" --site learn.microsoft.com
 
 # Same query via the MCP or OpenAPI backend
-uv run webiq web "the latest research" --site research.google --backend mcp
-uv run webiq web "the latest research" --site research.google --backend openapi
+uv run webiq web "what is retrieval augmented generation" --backend mcp
+uv run webiq web "what is retrieval augmented generation" --backend openapi
 
 # News, videos, images
-uv run webiq news "latest developments in AI and robotics" --site therundown.ai --max 10
-uv run webiq videos "latest AI trends"
-uv run webiq images "modern office workspace"
+uv run webiq news "latest space exploration news" --max 10 --backend mcp
+uv run webiq videos "how to make sourdough bread"
+uv run webiq images "aurora borealis"
 ```
 
 Common flags: `--backend {sdk,mcp,openapi}`, `--site <domain>`, `--max <n>` (1-50),
@@ -70,7 +70,7 @@ Or use the package directly in Python — every backend returns the same normali
 from webiq_playground import get_backend
 
 with get_backend("sdk") as backend:          # or "mcp" / "openapi"
-    result = backend.search("web", "the latest research", site="research.google")
+    result = backend.search("web", "what is retrieval augmented generation", site="learn.microsoft.com")
     for item in result.items:
         print(item.title, item.url)
 ```
