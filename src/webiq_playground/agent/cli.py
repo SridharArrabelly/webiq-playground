@@ -1,4 +1,4 @@
-﻿"""Unified CLI for the WebIQ Foundry agents: `webiq-agent`.
+"""Unified CLI for the WebIQ Foundry agents: `webiq-agent`.
 
     webiq-agent create web              # create/update one feature agent
     webiq-agent create --all            # create/update every feature agent

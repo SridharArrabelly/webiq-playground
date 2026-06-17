@@ -1,4 +1,4 @@
-﻿"""Registry of WebIQ Foundry agents.
+"""Registry of WebIQ Foundry agents.
 
 Adding a new feature agent is a single entry here: a name, a tool, an executor and
 an instruction blurb. The generic engine (``engine.py``) and CLI (``cli.py``) drive

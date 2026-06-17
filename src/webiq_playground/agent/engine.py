@@ -1,4 +1,4 @@
-﻿"""Generic engine shared by every WebIQ agent: create a version, and run the tool loop.
+"""Generic engine shared by every WebIQ agent: create a version, and run the tool loop.
 
 This is the *only* copy of the agent lifecycle code. Every feature in the registry is
 created and invoked through these two functions, so fixes (auth, the date tag, the
