@@ -109,6 +109,9 @@ Why it's built this way:
   normalization, a new backend only implements `_run()` — see
   [Adding a new backend](#adding-a-new-backend).
 
+> The hosted MCP agent (`webiq-mcp-agent`) is the one exception: WebIQ runs inside Foundry,
+> so it does not go through `backend.search()` at all.
+
 ## Backends
 
 ### SDK (`--backend sdk`)
@@ -149,18 +152,38 @@ contract as the SDK, and maps HTTP errors to the same `webiq.errors` types so fa
 
 ## Grounding agents (Foundry)
 
-Optional agents use **gpt-4o** on Azure AI Foundry with a WebIQ search tool wired in as a
-client-side function tool: the model calls e.g. `web_search`, we run a WebIQ backend, and
-the model synthesizes a cited answer. The agent uses whichever backend `WEBIQ_BACKEND`
-selects (default `sdk`).
+Optional agents run on Azure AI Foundry and answer questions with cited, WebIQ-grounded
+results. There are **two flavors** that differ only in *where* WebIQ runs:
 
-There is **one agent per feature** (`web`, `news`, `videos`, `images`), all driven by the
-same engine — adding a feature is a single entry in `agent/registry.py`.
+|                       | `webiq-agent` (function-tool)        | `webiq-mcp-agent` (hosted MCP)        |
+| --------------------- | ------------------------------------ | ------------------------------------- |
+| WebIQ tool            | client-side `FunctionTool`           | Foundry-hosted `MCPTool`              |
+| Who calls WebIQ       | **us** (a local backend)             | **Foundry** (server-side)             |
+| Round trips per ask   | 2× Foundry + 1× WebIQ (loops)        | **1× Foundry** (it runs the tool)     |
+| Coverage              | one agent **per feature**            | **one agent**, model picks the tool   |
+| WebIQ auth            | the active backend (key / Entra)     | stored in the Foundry MCP connection  |
+
+Both inject a `[Current date: YYYY-MM-DD]` tag so the model resolves "this year" / "latest"
+against today rather than its training data. Shared `.env`:
+
+```
+FOUNDRY_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
+FOUNDRY_MODEL_NAME=gpt-4o
+```
 
 ```bash
-uv sync --extra agent
+uv sync
 az login                                            # auth uses DefaultAzureCredential
+```
 
+### `webiq-agent` — client-side function tool
+
+The model calls e.g. `web_search`, we run a WebIQ backend locally, and the model
+synthesizes a cited answer. It uses whichever backend `WEBIQ_BACKEND` selects (default
+`sdk`). There is **one agent per feature** (`web`, `news`, `videos`, `images`), all driven
+by the same engine — adding a feature is a single entry in `agent/registry.py`.
+
+```bash
 uv run webiq-agent create web                       # create/update one feature agent
 uv run webiq-agent create --all                     # create/update every feature agent
 
@@ -168,18 +191,29 @@ uv run webiq-agent ask web "latest developments in AI, tech and robotics"
 uv run webiq-agent ask news "latest news on quantum computing"
 ```
 
-Each query begins with a `[Current date: YYYY-MM-DD]` tag the agent injects, so the model
-resolves "this year" / "latest" against today rather than its training data.
-
-Requires in `.env`:
-
-```
-FOUNDRY_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
-FOUNDRY_MODEL_NAME=gpt-4o
-```
-
 Agent names default to `webiq-<feature>-agent` and can be overridden per feature with
 `FOUNDRY_AGENT_NAME_<FEATURE>` (e.g. `FOUNDRY_AGENT_NAME_WEB`).
+
+### `webiq-mcp-agent` — hosted MCP tool
+
+A single agent attaches WebIQ as a **Foundry-hosted MCP tool**, so Foundry calls the WebIQ
+MCP server itself — one round trip from our side, no client-side loop, and the WebIQ
+credential lives in the Foundry connection (not in this repo). First register the WebIQ MCP
+server in the portal (**Tools → MCP**): server URL `https://api.microsoft.ai/v3/mcp`,
+key-based auth with header name **`x-apikey`**. Then point `.env` at that connection:
+
+```
+WEBIQ_MCP_CONNECTION_ID=WebIQ-MCP                    # connection name, or its full resource id
+```
+
+```bash
+uv run webiq-mcp-agent create                       # create/update the hosted MCP agent
+uv run webiq-mcp-agent ask "latest news on quantum computing"
+uv run webiq-mcp-agent ask "short videos on sourdough bread"
+```
+
+The hosted agent name defaults to `webiq-mcp-agent` (override with `FOUNDRY_MCP_AGENT_NAME`)
+and exposes the WebIQ `web`, `news`, `videos`, `images` and `browse` tools.
 
 ## Authentication
 
@@ -218,7 +252,9 @@ webiq-playground/
 │           ├── tools.py       # FunctionTool + run_<feature>_search (uses get_backend)
 │           ├── registry.py    # AgentSpec per feature (the one place to add agents)
 │           ├── engine.py      # generic create_agent() + ask() tool loop
-│           └── cli.py         # `webiq-agent create|ask <feature>`
+│           ├── cli.py         # `webiq-agent create|ask <feature>`
+│           ├── hosted_mcp.py  # hosted MCP agent: build_tool/create_agent/ask (server-side)
+│           └── hosted_cli.py  # `webiq-mcp-agent create|ask`
 ├── tests/
 │   ├── test_core.py           # build_query, models, normalize_payload
 │   ├── test_params.py         # wire_params (the shared request contract)
@@ -226,7 +262,8 @@ webiq-playground/
 │   ├── test_sdk.py            # SDK backend (offline, faked SDK client)
 │   ├── test_mcp.py            # MCP backend result parsing / search wiring (offline)
 │   ├── test_openapi.py        # OpenAPI backend search/normalize/error mapping (offline)
-│   └── test_agent.py          # tools, registry, engine tool loop
+│   ├── test_agent.py          # tools, registry, engine tool loop
+│   └── test_hosted_mcp.py     # hosted MCP agent (tool wiring + ask, offline)
 ├── .env.example
 ├── .gitignore
 ├── pyproject.toml
