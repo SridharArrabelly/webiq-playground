@@ -27,7 +27,12 @@ def _normalize_sites(site: str | Sequence[str] | None) -> tuple[list[str], list[
         domain = token[1:] if exclude else token
         if domain.startswith("site:"):
             domain = domain[len("site:") :]
-        domain = domain.strip()
+        # Reduce a full URL/path to its bare host: site: only matches a domain, so
+        # "https://www.mtn.com/investors" and "www.mtn.com/investors" both become
+        # "www.mtn.com".
+        if "://" in domain:
+            domain = domain.split("://", 1)[1]
+        domain = domain.split("/", 1)[0].strip()
         if not domain:
             continue
         (excludes if exclude else includes).append(domain)

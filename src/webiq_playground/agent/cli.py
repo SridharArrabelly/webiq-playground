@@ -23,7 +23,7 @@ def _cmd_create(args: argparse.Namespace) -> None:
 def _cmd_ask(args: argparse.Namespace) -> None:
     spec = get_spec(args.feature)
     print(f"[*] Asking {spec.agent_name}: {args.question!r}")
-    answer = engine_ask(spec, args.question)
+    answer = engine_ask(spec, args.question, site=args.site)
     print("\n=== Answer ===")
     print(answer)
 
@@ -42,6 +42,14 @@ def main() -> None:
     ask = sub.add_parser("ask", help="Ask a feature agent a question")
     ask.add_argument("feature", choices=feature_names(), help="Feature agent to ask")
     ask.add_argument("question", help="Your question")
+    ask.add_argument(
+        "--site",
+        action="append",
+        default=None,
+        metavar="DOMAIN",
+        help="Force the search scope to a domain (repeatable or comma-separated); exclude "
+        "with a '-' prefix using '=', e.g. --site mtn.com --site=-wikipedia.org",
+    )
     ask.set_defaults(func=_cmd_ask)
 
     args = parser.parse_args()

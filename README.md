@@ -204,7 +204,17 @@ uv run webiq-agent create --all                     # create/update every featur
 
 uv run webiq-agent ask web "latest developments in AI, tech and robotics"
 uv run webiq-agent ask news "latest news on quantum computing"
+
+# Force the search scope with --site (repeatable; same syntax as the webiq CLI).
+# Full URLs are reduced to their host, so a page link works too.
+uv run webiq-agent ask web "Who is the group CFO?" --site mtn.com
+uv run webiq-agent ask web "Who is the group CFO?" --site https://www.mtn.com/leadership
 ```
+
+By default the **model** decides whether to scope the tool to a site. Passing `--site`
+**overrides** that and forces the scope to the domain(s) you give (exclude with
+`--site=-domain`). `site:` matches a bare domain, so a URL like
+`https://www.mtn.com/leadership` is automatically reduced to `www.mtn.com`.
 
 Agent names default to `webiq-<feature>-agent` and can be overridden per feature with
 `FOUNDRY_AGENT_NAME_<FEATURE>` (e.g. `FOUNDRY_AGENT_NAME_WEB`).
@@ -247,6 +257,8 @@ The Web IQ APIs support the `site:` / `-site:` operators inside the `query` fiel
 
 - **Include** several domains — they are OR-ed, so results may come from any of them.
 - **Exclude** a domain — prefix it with `-`.
+- A full URL is reduced to its host (`https://www.mtn.com/investors` → `www.mtn.com`), since
+  `site:` matches a domain, not a path.
 
 ```bash
 # Single domain

@@ -44,6 +44,14 @@ def test_build_query_tolerates_site_prefix_and_blanks():
     assert build_query("rag", ["site:arxiv.org", "", "  "]) == "rag site:arxiv.org"
 
 
+def test_build_query_reduces_url_to_host():
+    assert (
+        build_query("group CFO", "https://www.mtn.com/investors")
+        == "group CFO site:www.mtn.com"
+    )
+    assert build_query("q", ["www.mtn.com/leadership"]) == "q site:www.mtn.com"
+
+
 def test_normalize_web_payload():
     payload = {
         "webResults": [

@@ -137,3 +137,77 @@ def test_engine_ask_runs_tool_loop(monkeypatch):
     out = engine.ask(spec, "hello")
     assert out == "FINAL"
     assert calls["executor"] == 1
+
+
+def test_engine_ask_site_overrides_model_choice(monkeypatch):
+    from webiq_playground.agent import engine
+
+    captured = {}
+
+    def fake_executor(query, site=""):
+        captured["site"] = site
+        return json.dumps({"results": []})
+
+    spec = AgentSpec(
+        feature="web",
+        agent_name="a",
+        tool_name="web_search",
+        instructions="",
+        tool=None,
+        executor=fake_executor,
+    )
+
+    # The model picks no site; the --site override must win.
+    function_call = type(
+        "FC",
+        (),
+        {
+            "type": "function_call",
+            "name": "web_search",
+            "arguments": '{"query": "q", "site": ""}',
+            "call_id": "c1",
+        },
+    )()
+    resp1 = type("R1", (), {"output": [function_call], "id": "r1", "output_text": ""})()
+    resp2 = type("R2", (), {"output": [], "id": "r2", "output_text": "FINAL"})()
+
+    class _OpenAIClient:
+        n = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        @property
+        def responses(self):
+            return self
+
+        def create(self, **kwargs):
+            self.n += 1
+            return resp1 if self.n == 1 else resp2
+
+    class _ProjectClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def get_openai_client(self):
+            return _OpenAIClient()
+
+    class _Credential:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setenv("FOUNDRY_PROJECT_ENDPOINT", "https://example")
+    monkeypatch.setattr(engine, "DefaultAzureCredential", lambda: _Credential())
+    monkeypatch.setattr(engine, "AIProjectClient", lambda **kwargs: _ProjectClient())
+
+    engine.ask(spec, "hello", site=["mtn.com", "-wikipedia.org"])
+    assert captured["site"] == "mtn.com,-wikipedia.org"

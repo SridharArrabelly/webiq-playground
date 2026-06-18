@@ -46,10 +46,16 @@ def create_agent(spec: AgentSpec) -> str:
         return agent.name
 
 
-def ask(spec: AgentSpec, question: str) -> str:
-    """Ask ``spec``'s agent a question, running the client-side tool loop."""
+def ask(spec: AgentSpec, question: str, site: str | list[str] | None = None) -> str:
+    """Ask ``spec``'s agent a question, running the client-side tool loop.
+
+    If ``site`` is given, it forces the search scope: whatever ``site`` argument the model
+    chooses for the tool is overridden with this value (a domain, several comma-separated
+    domains, or a list; prefix a domain with ``-`` to exclude it).
+    """
     agent_ref = {"agent_reference": {"name": spec.agent_name, "type": "agent_reference"}}
     dated_question = f"[Current date: {date.today().isoformat()}] {question}"
+    forced_site = ",".join(site) if isinstance(site, list) else site
 
     credential, project_client = _project_client()
     with (
@@ -64,6 +70,8 @@ def ask(spec: AgentSpec, question: str) -> str:
             for item in response.output:
                 if getattr(item, "type", None) == "function_call" and item.name == spec.tool_name:
                     args = json.loads(item.arguments)
+                    if forced_site:
+                        args["site"] = forced_site
                     print(
                         f"  -> {spec.tool_name}(query={args.get('query')!r}, "
                         f"site={args.get('site')!r})"
