@@ -3,14 +3,26 @@
 A small Python playground for the **Microsoft Web IQ** APIs — a suite of AI-native
 search APIs that ground applications in fresh, real-world web content.
 
-The same features (web, news, videos, images) are reachable through **interchangeable
-backends**, so you can compare access methods without changing the CLI or the agent:
+The same features (web, news, videos, images) are reachable two ways: through
+**interchangeable backends** for direct search (same call, same `SearchResult`), and through
+**Foundry grounding agents** for synthesized, cited answers.
+
+**Direct search** — pick a backend with `--backend` (or `WEBIQ_BACKEND`); every one returns
+the same `SearchResult`:
 
 | Access method | Backend (`--backend`) | Transport                          | Status |
 | ------------- | --------------------- | ---------------------------------- | ------ |
 | SDK           | `sdk` (default)       | official [`webiq`](https://pypi.org/project/webiq/) SDK | ✅ |
 | MCP           | `mcp`                 | WebIQ MCP server (Streamable HTTP) | ✅ |
 | OpenAPI       | `openapi`             | WebIQ REST API directly (`httpx`)  | ✅ |
+
+**Grounding agents (Azure AI Foundry)** — the model calls WebIQ and writes a cited answer.
+These are agents, not `--backend` values; see [Grounding agents](#grounding-agents-foundry):
+
+| Grounding agent | Command          | WebIQ runs                  | Status |
+| --------------- | ---------------- | --------------------------- | ------ |
+| Function tool   | `webiq-agent`     | client-side (via a backend) | ✅ |
+| Hosted MCP      | `webiq-mcp-agent` | server-side, inside Foundry | ✅ |
 
 | Feature       | Status |
 | ------------- | ------ |
